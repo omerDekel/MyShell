@@ -22,7 +22,7 @@ int CD(char *args[]) {
         // Else we change the directory to the one specified by the argument
     } else {
         if (chdir(args[1] == -1)) {
-            printf(" no such directory\n");
+            printf(" no such directory\n")
             return -1;
         }
         return 0;
@@ -31,12 +31,11 @@ int CD(char *args[]) {
 
 int main() {
     int wait = 1;
-    int i = 0;
     int stat , ret_code;
     pid_t pid;
     char *args[ARGS_SIZE];
-    char *cmd[COMMAND_LENGTH];
-    char *cmdCoppy[COMMAND_LENGTH];
+    char cmd[COMMAND_LENGTH];
+    char cmdCoppy[COMMAND_LENGTH];
     while (1) {
         printf("prompt >");
         //scanf("%s" , cmd);
@@ -46,9 +45,12 @@ int main() {
         if (!strncmp(cmd , "cd", 2)) {
             CD(args);
         } else {
+            int i = 0;
             char *arg = strtok(cmd , " ");
             while (arg != NULL) {
                 args[i++] = arg;
+                //printf("argum %d is ", i);
+                //printf("%s",args[i]);
                 arg = strtok(NULL , " ");
             }
             args[i] = NULL;
@@ -59,8 +61,13 @@ int main() {
             }
             if (pid == 0) {
                 /*son*/
+                /*int j = 0;
+                while (args[j] !=NULL) {
+                    printf("argum %d is ", j);
+                    printf("%s",args[j]);
+                    j++;
+                }*/
                 //printf(" pid :%d\n" , pid);
-                char* args1[] = {"ls", NULL, "-l", NULL};
                 ret_code = execvp(args[0] , args);
                 fprintf(stderr , "error in system call\n");
                 if (ret_code == -1) {
@@ -69,7 +76,7 @@ int main() {
                 //}
             } else {
                 /*father*/
-                if (strcmp(args[i - 1] , "&")) {
+               if (strcmp(args[i - 1] , "&")) {
                     printf(" pid :%d\n" , pid);
                     waitpid(pid , NULL , 0);
                }
