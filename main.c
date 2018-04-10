@@ -21,8 +21,9 @@ void InitializeJobs(job jobs[JOBS_SIZE]) {
     }
 }
 int AddJob(job newJob, job jobs[JOBS_SIZE]) {
+    int stat;
     for (int i = 0; i <JOBS_SIZE ; ++i) {
-        if(!strcmp(jobs[i].jobName,"Available") || waitpid(jobs[i].pid , NULL , 0)) {
+        if(!strcmp(jobs[i].jobName,"Available") || waitpid(jobs[i].pid ,&stat , WNOHANG)) {
             jobs[i] = newJob;
             return 1;
         }
@@ -30,8 +31,9 @@ int AddJob(job newJob, job jobs[JOBS_SIZE]) {
     return 0;
 }
 void printJobs (job jobs[JOBS_SIZE]) {
+    int stat;
     for (int i = 0; i < JOBS_SIZE ; ++i) {
-        if(strcmp(jobs[i].jobName,"Available") && !waitpid(jobs[i].pid , NULL , 0)) {
+        if(strcmp(jobs[i].jobName,"Available") && !waitpid(jobs[i].pid , &stat , WNOHANG)) {
             printf("%d %s \n",jobs[i].pid, jobs[i].jobName);
         }
     }
@@ -73,7 +75,7 @@ int CD(char *args[]) {
 }
 
 int main() {
-    int wait, ret_code;
+    int wait, ret_code ,stat;
     pid_t pid;
     char *args[ARGS_SIZE];
     char cmd[COMMAND_LENGTH];
@@ -89,10 +91,11 @@ int main() {
         if (strlen(cmd) > 0) {
             cmd[strlen(cmd) - 1] = '\0';
         }
-
         strcpy(cmdCopy , cmd);
         if (!strncmp(cmd , "cd", 2)) {
             CD(args);
+        } else if (!strcmp(cmdCopy, "jobs")) {
+            printJobs(jobsArr);
         } else {
             wait = getArgs(args,cmd);
             pid = fork();
@@ -102,7 +105,6 @@ int main() {
             }
             if (pid == 0) {
                 /*son*/
-                printf("\n");
                 ret_code = execvp(args[0] , args);
                 fprintf(stderr , "error in system call\n");
                 if (ret_code == -1) {
@@ -110,12 +112,13 @@ int main() {
                 }
             } else {
                 /*father*/
-               if (wait) {
-                    printf(" pid :%d\n" , pid);
-                    waitpid(pid , NULL , 0);
+                printf(" pid :%d\n" , pid);
+                if (wait) {
+                    waitpid(pid , &stat , 0);
                } else {
                    job job1;
                    job1.pid = pid;
+                    cmdCopy[strlen(cmdCopy)-1] = '\0';
                    strcpy(job1.jobName , cmdCopy);
                    if (!AddJob(job1,jobsArr)) {
                        printf("could not add the job to the array");
