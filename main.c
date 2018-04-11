@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdbool.h>
 #include <memory.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -15,36 +14,50 @@ typedef struct job {
     char jobName[COMMAND_LENGTH];
 } job;
 
-void InitializeJobs(job jobs[JOBS_SIZE]) {
-    for (int i = 0; i < JOBS_SIZE ; ++i) {
-        strcpy(jobs[i].jobName, "Available");
-    }
-}
+/**
+ * AddJob .
+ * adding new job to the jobs array .
+ * @param newJob new job to add .
+ * @param jobs jobs array.
+ * @return 1 if succeed else 0.
+ */
 int AddJob(job newJob, job jobs[JOBS_SIZE]) {
     int stat;
-    for (int i = 0; i <JOBS_SIZE ; ++i) {
-        if(!strcmp(jobs[i].jobName,"Available") || waitpid(jobs[i].pid ,&stat , WNOHANG)) {
+    for (int i = 0; i <=JOBS_SIZE ; ++i) {
+        if( waitpid(jobs[i].pid ,&stat , WNOHANG) || !strcmp(jobs[i].jobName,"Available")) {
             jobs[i] = newJob;
             return 1;
         }
     }
     return 0;
 }
+/**
+ * printJobs.
+ * @param jobs array we print .
+ */
 void printJobs (job jobs[JOBS_SIZE]) {
     int stat;
     for (int i = 0; i < JOBS_SIZE ; ++i) {
-        if(strcmp(jobs[i].jobName,"Available") && !waitpid(jobs[i].pid , &stat , WNOHANG)) {
-            printf("%d %s \n",jobs[i].pid, jobs[i].jobName);
+        if (strcmp(jobs[i].jobName,"Available")) {
+            if(!waitpid(jobs[i].pid , &stat , WNOHANG)) {
+                printf("%d %s \n",jobs[i].pid, jobs[i].jobName);
+            } else {
+                strcpy(jobs[i].jobName,"Available");
+            }
         }
     }
 }
+/**
+ * getArgs .
+ * @param args  string arrray of the arguments .
+ * @param cmd command we taking out the args from it .
+ * @return 0 if there's no-waiting flag , else 1 .
+ */
 int getArgs(char *args[ARGS_SIZE],char cmd[COMMAND_LENGTH]) {
     int i = 0;
     char *arg = strtok(cmd , " ");
     while (arg != NULL) {
         args[i++] = arg;
-        //printf("argum %d is ", i);
-        //printf("%s",args[i]);
         arg = strtok(NULL , " ");
     }
     if (!strcmp(args[i - 1] , "&")) {
@@ -55,9 +68,11 @@ int getArgs(char *args[ARGS_SIZE],char cmd[COMMAND_LENGTH]) {
     return 1;
 }
 /**
+ * CD.
+ * cd implemention .
  * from stackoverflow
- * @param args
- * @return
+ * @param args args of the command .
+ * @return .
  */
 int CD(char *args[]) {
     // If we write no path , then go the home directory
@@ -74,27 +89,37 @@ int CD(char *args[]) {
     }
 }
 
+/**
+ * main .
+ */
 int main() {
     int wait, ret_code ,stat;
     pid_t pid;
     char *args[ARGS_SIZE];
     char cmd[COMMAND_LENGTH];
-    char cmdCopy[COMMAND_LENGTH];
+    // string that saves the original command.
+    char cmdSaver[COMMAND_LENGTH];
     job jobsArr[JOBS_SIZE];
-    InitializeJobs(jobsArr);
+    // initializing the jobs array
+    for (int i = 0; i < JOBS_SIZE ; ++i) {
+        strcpy(jobsArr[i].jobName, "Available");
+    }
     while (1) {
         printf("prompt >");
         fgets(cmd, COMMAND_LENGTH * sizeof(char), stdin);
         if (cmd[0]=='\n') {
             continue;
         }
+        // deleting '\n' char from the cmd .
         if (strlen(cmd) > 0) {
             cmd[strlen(cmd) - 1] = '\0';
         }
-        strcpy(cmdCopy , cmd);
+        strcpy(cmdSaver , cmd);
+        // if the command is cd
         if (!strncmp(cmd , "cd", 2)) {
             CD(args);
-        } else if (!strcmp(cmdCopy, "jobs")) {
+            //if the command is jobs
+        } else if (!strcmp(cmdSaver, "jobs")) {
             printJobs(jobsArr);
         } else {
             wait = getArgs(args,cmd);
@@ -115,11 +140,12 @@ int main() {
                 printf(" pid :%d\n" , pid);
                 if (wait) {
                     waitpid(pid , &stat , 0);
+                    //if it's background process we add it to jobsArr
                } else {
                    job job1;
                    job1.pid = pid;
-                    cmdCopy[strlen(cmdCopy)-1] = '\0';
-                   strcpy(job1.jobName , cmdCopy);
+                    cmdSaver[strlen(cmdSaver)-1] = '\0';
+                   strcpy(job1.jobName , cmdSaver);
                    if (!AddJob(job1,jobsArr)) {
                        printf("could not add the job to the array");
                    }
@@ -128,5 +154,4 @@ int main() {
         }
     }
 
-    return 0;
 }
