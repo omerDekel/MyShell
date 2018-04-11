@@ -21,15 +21,15 @@ typedef struct job {
  * @param jobs jobs array.
  * @return 1 if succeed else 0.
  */
-int AddJob(job newJob, job jobs[JOBS_SIZE]) {
+void AddJob(job newJob, job jobs[JOBS_SIZE]) {
     int stat;
-    for (int i = 0; i <=JOBS_SIZE ; ++i) {
+    for (int i = 0; i < JOBS_SIZE ; ++i) {
         if( waitpid(jobs[i].pid ,&stat , WNOHANG) || !strcmp(jobs[i].jobName,"Available")) {
             jobs[i] = newJob;
-            return 1;
+            return;
         }
     }
-    return 0;
+    printf("Too much jobs, can't add a job to the jobs array\n");
 }
 /**
  * printJobs.
@@ -41,8 +41,6 @@ void printJobs (job jobs[JOBS_SIZE]) {
         if (strcmp(jobs[i].jobName,"Available")) {
             if(!waitpid(jobs[i].pid , &stat , WNOHANG)) {
                 printf("%d %s \n",jobs[i].pid, jobs[i].jobName);
-            } else {
-                strcpy(jobs[i].jobName,"Available");
             }
         }
     }
@@ -106,13 +104,16 @@ int main() {
     }
     while (1) {
         printf("prompt >");
-        fgets(cmd, COMMAND_LENGTH * sizeof(char), stdin);
+        fgets(cmd, COMMAND_LENGTH , stdin);
         if (cmd[0]=='\n') {
             continue;
         }
         // deleting '\n' char from the cmd .
         if (strlen(cmd) > 0) {
             cmd[strlen(cmd) - 1] = '\0';
+        }
+        if (!strcmp("exit", cmd)) {
+            exit(1);
         }
         strcpy(cmdSaver , cmd);
         // if the command is cd
@@ -137,18 +138,16 @@ int main() {
                 }
             } else {
                 /*father*/
-                printf(" pid :%d\n" , pid);
+                printf("%d\n" , pid);
                 if (wait) {
                     waitpid(pid , &stat , 0);
                     //if it's background process we add it to jobsArr
                } else {
                    job job1;
                    job1.pid = pid;
-                    cmdSaver[strlen(cmdSaver)-1] = '\0';
+                   cmdSaver[strlen(cmdSaver)-1] = '\0';
                    strcpy(job1.jobName , cmdSaver);
-                   if (!AddJob(job1,jobsArr)) {
-                       printf("could not add the job to the array");
-                   }
+                   AddJob(job1,jobsArr);
                }
             }
         }
