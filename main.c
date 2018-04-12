@@ -12,8 +12,27 @@
 typedef struct job {
     pid_t pid;
     char jobName[COMMAND_LENGTH];
+    int isBackground;
 } job;
-
+/**
+ * JobsCheck.
+ * going through the array and check if the job was finished
+ * and updating the array accordingly.
+ * @param jobs array .
+ */
+void JobsCheck(job jobs[JOBS_SIZE]) {
+    int stat;
+    for (int i = 0; i < JOBS_SIZE; ++i) {
+        if (jobs[i].isBackground == 1) {
+            // if child is finished .
+            if (waitpid(jobs[i].pid , &stat , WNOHANG)) {
+                jobs[i].isBackground = 0;
+            } else {
+                jobs[i].isBackground = 1;
+            }
+        }
+    }
+}
 /**
  * AddJob .
  * adding new job to the jobs array .
@@ -22,9 +41,8 @@ typedef struct job {
  * @return 1 if succeed else 0.
  */
 void AddJob(job newJob, job jobs[JOBS_SIZE]) {
-    int stat;
     for (int i = 0; i < JOBS_SIZE ; ++i) {
-        if( waitpid(jobs[i].pid ,&stat , WNOHANG) || !strcmp(jobs[i].jobName,"Available")) {
+        if(!jobs[i].isBackground) {
             jobs[i] = newJob;
             return;
         }
@@ -36,15 +54,12 @@ void AddJob(job newJob, job jobs[JOBS_SIZE]) {
  * @param jobs array we print .
  */
 void printJobs (job jobs[JOBS_SIZE]) {
-    int stat;
     for (int i = 0; i < JOBS_SIZE ; ++i) {
-        if (strcmp(jobs[i].jobName,"Available")) {
-            if(!waitpid(jobs[i].pid , &stat , WNOHANG)) {
+        if(jobs[i].isBackground == 1) {
                 printf("%d %s \n",jobs[i].pid, jobs[i].jobName);
             }
         }
     }
-}
 /**
  * getArgs .
  * @param args  string arrray of the arguments .
@@ -100,7 +115,7 @@ int main() {
     job jobsArr[JOBS_SIZE];
     // initializing the jobs array
     for (int i = 0; i < JOBS_SIZE ; ++i) {
-        strcpy(jobsArr[i].jobName, "Available");
+        jobsArr[i].isBackground = 0;
     }
     while (1) {
         printf("prompt >");
@@ -121,6 +136,8 @@ int main() {
             CD(args);
             //if the command is jobs
         } else if (!strcmp(cmdSaver, "jobs")) {
+            //updating the jobs array before adding a new job to it .
+            JobsCheck(jobsArr);
             printJobs(jobsArr);
         } else {
             wait = getArgs(args,cmd);
@@ -145,8 +162,11 @@ int main() {
                } else {
                    job job1;
                    job1.pid = pid;
+                   job1.isBackground = 1;
                    cmdSaver[strlen(cmdSaver)-1] = '\0';
                    strcpy(job1.jobName , cmdSaver);
+                    //updating the jobs array before adding a new job to it .
+                   JobsCheck(jobsArr);
                    AddJob(job1,jobsArr);
                }
             }
